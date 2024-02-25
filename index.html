@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.5.1/axios.min.js" integrity="sha512-emSwuKiMyYedRwflbZB2ghzX8Cw8fmNVgZ6yQNNXXagFzFOaQmbvQ1vmDkddHjm5AITcBIZfC7k4ShQSjgPAmQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+
+   <div class="container-fluid">
+
+    <h1 class="row">Login Here</h1>
+
+    <main>
+        <div class="row">
+            <label for="username">Username </label>
+            <input type="text" name="username" id="username">
+        </div>
+
+        <div class="row">
+            <label for="password">Password </label>
+            <input type="password" name="password" id="password">
+        </div>
+
+        <div>
+            <button id="login" onclick="login()">Login</button>
+            <button id="dashboard" onclick="getDashboard()">Get Dashboard</button>
+            <button id="settings" onclick="settings()">Settings</button>
+        </div>
+    </main>
+   </div>
+
+   <script>
+    var click=0;
+    function login()
+    {
+        const data = {
+            username: document.getElementById('username').value,
+            password: document.getElementById('password').value,
+        };
+        if(click==0){
+        axios.post('/api/login',data)
+        .then(res =>{
+            document.getElementById('username').value='';
+            document.getElementById('password').value='';
+            if(res && res.data && res.data.success){
+                const token=res.data.token;
+                localStorage.setItem('jwt',token);
+                history.pushState({}, "", "/dashboard");
+                getDashboard();
+            }
+        });
+    }
+    else{
+        history.pushState({}, "", "/dashboard");
+        getDashboard();
+    }
+    }
+
+    function getDashboard(){
+        const token = localStorage.getItem('jwt');
+        axios.get('/api/dashboard',{
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        }).then (res =>{
+            if(res && res.data && res.data.success){
+                history.pushState({}, "", "/dashboard");
+                document.querySelector('h1.row').innerHTML='Dashboard';
+                document.querySelector('main').innerHTML=res.data.myContent;
+            }
+        });
+    }
+
+    function settings(){
+        const token = localStorage.getItem('jwt');
+        axios.get('/api/settings',{
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        }).then (res =>{
+            if(res && res.data && res.data.success){
+                history.pushState({}, "", "/settings");
+                document.querySelector('h1.row').innerHTML='Settings Page';
+                document.querySelector('main').innerHTML=res.data.myContent;
+            }
+        });
+    }
+    
+    function decodingJWT(token) {
+        try {
+            const base64payload = (token.split('.')[1]).replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64payload).split('').map(function(c) {
+                 return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+
+            return JSON.parse(jsonPayload);
+            } catch (error) {
+                console.error('Error decoding JWT token:', error);
+                return {};
+            }
+        }
+
+    function onLoad() {
+    const token = localStorage.getItem('jwt');
+    const currentPath = window.location.pathname;
+
+    if (token) {
+        debugger
+        const decodedToken = decodingJWT(token);
+        const issuedAt = decodedToken.iat; 
+        const expiresIn = decodedToken.exp - issuedAt;
+        const currentTimeInSeconds = Math.floor(Date.now() / 1000);
+        if(currentTimeInSeconds-issuedAt>expiresIn){
+            localStorage.removeItem('jwt');
+            window.location.href = '/';
+        }else if (currentPath === '/' && currentTimeInSeconds - issuedAt <= expiresIn) {
+            document.getElementById('login').onclick = function() {
+                click+=1;
+                login();
+                };
+        } else if (currentPath === '/dashboard') {
+           getDashboard();
+        } else if (currentPath === '/settings') {
+           settings();
+        }
+    }
+}
+    window.onload = onLoad();
+ 
+   </script>
+</body>
+</html>
+   </script>
+    </body>
+</html>
+
